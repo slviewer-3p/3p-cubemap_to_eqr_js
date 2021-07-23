@@ -22,8 +22,10 @@ uniform mat4 modelViewMatrix;
 varying vec2 vUv;
 
 void main()  {
+
     vUv = vec2( 1.- uv.x, uv.y );
     gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
 }
 `;
 
@@ -51,10 +53,11 @@ void main() {
     normalize( dir );
 
     gl_FragColor = vec4( textureCube( map, dir ).rgb, 1. );
+
 }
 `;
 
-    function CubemapToEquirectangular(renderer, provideCubeCamera) {
+    function CubemapToEquirectangular(renderer, provideCubeCamera, eqr_width, eqr_height) {
         this.width = 1;
         this.height = 1;
 
@@ -80,13 +83,13 @@ void main() {
         this.cubeCamera = null;
         this.attachedCamera = null;
 
-        this.setSize(4096, 2048);
+        this.setSize(eqr_width, eqr_height);
 
         var gl = this.renderer.getContext();
         this.cubeMapSize = gl.getParameter(gl.MAX_CUBE_MAP_TEXTURE_SIZE);
 
         if (provideCubeCamera) {
-            this.getCubeCamera(2048);
+            this.getCubeCamera(eqr_height);
         }
     }
 
@@ -133,6 +136,7 @@ void main() {
         this.attachedCamera = camera;
     };
 
+    // http://stackoverflow.com/a/5100158/603983
     CubemapToEquirectangular.prototype.dataURItoBlob = function (dataURI) {
         // convert base64/URLEncoded data component to raw binary data held in a string
         var byteString;
@@ -151,7 +155,7 @@ void main() {
         return new Blob([ia], { type: mimeString });
     };
 
-    CubemapToEquirectangular.prototype.convert = function (cubeCamera, suggested_filename) {
+    CubemapToEquirectangular.prototype.convert = function (cubeCamera, filename, xmp_header) {
         this.quad.material.uniforms.map.value = cubeCamera.renderTarget.texture;
         this.renderer.setRenderTarget(this.output);
         this.renderer.render(this.scene, this.camera);
@@ -162,13 +166,13 @@ void main() {
         var imageData = new ImageData(new Uint8ClampedArray(pixels), this.width, this.height);
 
         var encoder = new JPEGEncoder(90);
-        var jpegURI = encoder.encode(imageData, 90);
+        var jpegURI = encoder.encode(imageData, 90, xmp_header);
         var blob = this.dataURItoBlob(jpegURI);
 
         var url = URL.createObjectURL(blob);
         var anchor = document.createElement("a");
         anchor.href = url;
-        anchor.setAttribute("download", suggested_filename);
+        anchor.setAttribute("download", filename);
         anchor.className = "download-js-link";
         anchor.innerHTML = "downloading...";
         anchor.style.display = "none";
@@ -181,14 +185,14 @@ void main() {
         this.renderer.setRenderTarget(null);
     };
 
-    CubemapToEquirectangular.prototype.update = function (camera, scene, suggested_filename) {
+    CubemapToEquirectangular.prototype.update = function (camera, scene, filename, xmp_header) {
         var autoClear = this.renderer.autoClear;
         this.renderer.autoClear = true;
         this.cubeCamera.position.copy(camera.position);
         this.cubeCamera.update(this.renderer, scene);
         this.renderer.autoClear = autoClear;
 
-        this.convert(this.cubeCamera, suggested_filename);
+        this.convert(this.cubeCamera, filename, xmp_header);
     };
 
     if (typeof exports !== "undefined") {
