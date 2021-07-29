@@ -1,6 +1,8 @@
 // Copyright (C) 2016 Jaume Sanchez Elias, http://www.clicktorelease.com
 // https://github.com/spite/THREE.CubemapToEquirectangular
-// Modified by Callum Prentice (callum@lindenlab.com) to use external jpeg encoder
+//
+// Modified by Callum Prentice (callum@lindenlab.com) 2021-07-28 to use 
+// external jpeg encoder and write XMP metadata
 
 (function () {
     "use strict";
@@ -155,7 +157,7 @@ void main() {
         return new Blob([ia], { type: mimeString });
     };
 
-    CubemapToEquirectangular.prototype.convert = function (cubeCamera, filename, xmp_header) {
+    CubemapToEquirectangular.prototype.convert = function (cubeCamera, suggested_filename, xmp_details) {
         this.quad.material.uniforms.map.value = cubeCamera.renderTarget.texture;
         this.renderer.setRenderTarget(this.output);
         this.renderer.render(this.scene, this.camera);
@@ -166,13 +168,13 @@ void main() {
         var imageData = new ImageData(new Uint8ClampedArray(pixels), this.width, this.height);
 
         var encoder = new JPEGEncoder(90);
-        var jpegURI = encoder.encode(imageData, 90, xmp_header);
+        var jpegURI = encoder.encode(imageData, 90, xmp_details);
         var blob = this.dataURItoBlob(jpegURI);
 
         var url = URL.createObjectURL(blob);
         var anchor = document.createElement("a");
         anchor.href = url;
-        anchor.setAttribute("download", filename);
+        anchor.setAttribute("download", suggested_filename);
         anchor.className = "download-js-link";
         anchor.innerHTML = "downloading...";
         anchor.style.display = "none";
@@ -185,14 +187,14 @@ void main() {
         this.renderer.setRenderTarget(null);
     };
 
-    CubemapToEquirectangular.prototype.update = function (camera, scene, filename, xmp_header) {
+    CubemapToEquirectangular.prototype.update = function (camera, scene, suggested_filename, xmp_details) {
         var autoClear = this.renderer.autoClear;
         this.renderer.autoClear = true;
         this.cubeCamera.position.copy(camera.position);
         this.cubeCamera.update(this.renderer, scene);
         this.renderer.autoClear = autoClear;
 
-        this.convert(this.cubeCamera, filename, xmp_header);
+        this.convert(this.cubeCamera, suggested_filename, xmp_details);
     };
 
     if (typeof exports !== "undefined") {
